@@ -1,0 +1,30 @@
+{
+  "title": "Nepali Grammar - Basic",
+  "topic": "Linga, Karak and Vachan",
+  "category": "Nepali",
+  "subject": "Nepali",
+  "duration": 15,
+  "questions": [
+    {
+      "question_text": "'माया' शब्दको लिङ्ग के हो?",
+      "options": ["पुल्लिङ्ग", "स्त्रीलिङ्ग", "नपुंसकलिङ्ग", "उभयलिङ्ग"],
+      "correct_option": 1,
+      "explanation": "'माया' स्त्रीलिङ्ग शब्द हो।",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "कर्म कारकको विभक्ति चिन्ह के हो?",
+      "options": ["ले", "लाई", "बाट", "मा"],
+      "correct_option": 1,
+      "explanation": "कर्म कारकको विभक्ति चिन्ह 'लाई' हो।",
+      "difficulty": "medium"
+    },
+    {
+      "question_text": "'घर' शब्दको बहुवचन के हुन्छ?",
+      "options": ["घरहरू", "घरहरु", "घरहरुँ", "घरहरूँ"],
+      "correct_option": 0,
+      "explanation": "'घर' शब्दको बहुवचन 'घरहरू' हो।",
+      "difficulty": "easy"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+/media
+/staticfiles
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.iml
+*.lock
+
+# Android
+*.jks
+*.keystore
+local.properties
+
+# iOS
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+**/xcshareddata/WorkspaceSettings.xcsettings
+**/xcshareddata/IDEWorkspaceChecks.plist
+Podfile.lock
+Pods/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+

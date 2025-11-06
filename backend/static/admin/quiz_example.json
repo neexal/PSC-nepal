@@ -1,0 +1,39 @@
+{
+  "questions": [
+    {
+      "question_text": "What is the capital of Nepal?",
+      "options": ["Kathmandu", "Pokhara", "Lalitpur", "Bhaktapur"],
+      "correct_option": 0,
+      "explanation": "Kathmandu is the capital and largest city of Nepal.",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "Mount Everest is known as ______ in Nepali.",
+      "options": ["Gaurishankar", "Sagarmatha", "Himalaya", "Annapurna"],
+      "correct_option": 1,
+      "explanation": "Sagarmatha (सगरमाथा) is the Nepali name for Mount Everest.",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "In which year did Nepal become a federal democratic republic?",
+      "options": ["2006", "2007", "2008", "2009"],
+      "correct_option": 2,
+      "explanation": "Nepal became a federal democratic republic on May 28, 2008.",
+      "difficulty": "medium"
+    },
+    {
+      "question_text": "How many provinces are there in Nepal?",
+      "options": ["5", "6", "7", "8"],
+      "correct_option": 2,
+      "explanation": "Nepal has 7 provinces as per the constitution of 2015.",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "Who was the first President of Nepal?",
+      "options": ["Ram Baran Yadav", "Bidya Devi Bhandari", "K.P. Sharma Oli", "Pushpa Kamal Dahal"],
+      "correct_option": 0,
+      "explanation": "Ram Baran Yadav became the first President of Nepal in 2008.",
+      "difficulty": "medium"
+    }
+  ]
+}

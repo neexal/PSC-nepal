@@ -1,0 +1,47 @@
+{
+  "title": "English Grammar - Basics",
+  "topic": "Tenses, Articles and Prepositions",
+  "category": "English",
+  "subject": "English",
+  "duration": 15,
+  "questions": [
+    {
+      "question_text": "Choose the correct article: I saw ___ elephant in the zoo.",
+      "options": ["a", "an", "the", "no article"],
+      "correct_option": 1,
+      "explanation": "Use 'an' before words starting with a vowel sound.",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "Which sentence is in present perfect tense?",
+      "options": [
+        "I am eating lunch",
+        "I ate lunch",
+        "I have eaten lunch",
+        "I will eat lunch"
+      ],
+      "correct_option": 2,
+      "explanation": "Present perfect uses 'have/has + past participle'.",
+      "difficulty": "medium"
+    },
+    {
+      "question_text": "Fill in the blank: She is good ___ mathematics.",
+      "options": ["in", "at", "on", "with"],
+      "correct_option": 1,
+      "explanation": "We use 'at' with the phrase 'good at'.",
+      "difficulty": "easy"
+    },
+    {
+      "question_text": "Identify the passive voice sentence:",
+      "options": [
+        "The cat chased the mouse",
+        "The mouse was chased by the cat",
+        "The mouse is chasing the cat",
+        "The cat will chase the mouse"
+      ],
+      "correct_option": 1,
+      "explanation": "Passive voice uses 'be + past participle'.",
+      "difficulty": "medium"
+    }
+  ]
+}

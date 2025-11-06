@@ -1,0 +1,214 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
+
+class ApiService {
+  // Uses ApiConfig for automatic platform detection
+  static String get baseUrl => ApiConfig.baseUrl;
+  
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  static Future<Map<String, String>> getHeaders({bool includeAuth = true}) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',  // Ensure REST Framework returns JSON, not HTML
+    };
+    
+    if (includeAuth) {
+      final token = await getToken();
+      if (token != null) {
+        headers['Authorization'] = 'Token $token';
+      }
+    }
+    
+    return headers;
+  }
+
+  // Auth APIs
+  static Future<Map<String, dynamic>> login(String username, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login/'),
+        headers: await getHeaders(includeAuth: false),
+        body: jsonEncode({'username': username, 'password': password}),
+      );
+      
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<!DOCTYPE') || response.body.trim().startsWith('<html')) {
+        throw Exception('Backend returned HTML instead of JSON. Status: ${response.statusCode}. Make sure the backend is running and the URL is correct.');
+      }
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        // Try to parse error message
+        try {
+          final error = jsonDecode(response.body);
+          throw Exception(error['error'] ?? 'Login failed: ${response.statusCode}');
+        } catch (e) {
+          throw Exception('Login failed: ${response.statusCode} - ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+        }
+      }
+    } catch (e) {
+      if (e is FormatException) {
+        throw Exception('Backend returned invalid JSON. Make sure the backend server is running at $baseUrl');
+      }
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> register(String username, String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register/'),
+        headers: await getHeaders(includeAuth: false),
+        body: jsonEncode({'username': username, 'email': email, 'password': password}),
+      );
+      
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<!DOCTYPE') || response.body.trim().startsWith('<html')) {
+        throw Exception('Backend returned HTML instead of JSON. Status: ${response.statusCode}. Make sure the backend is running and the URL is correct.');
+      }
+      
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        // Try to parse error message
+        try {
+          final error = jsonDecode(response.body);
+          throw Exception(error['error'] ?? 'Registration failed: ${response.statusCode}');
+        } catch (e) {
+          throw Exception('Registration failed: ${response.statusCode} - ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+        }
+      }
+    } catch (e) {
+      if (e is FormatException) {
+        throw Exception('Backend returned invalid JSON. Make sure the backend server is running at $baseUrl');
+      }
+      rethrow;
+    }
+  }
+
+  // Quiz APIs
+  static Future<List<dynamic>> getQuizzes({String? category}) async {
+    String url = '$baseUrl/quizzes/';
+    if (category != null) {
+      url += '?category=$category';
+    }
+    final response = await http.get(Uri.parse(url), headers: await getHeaders(includeAuth: false));
+    return jsonDecode(response.body);
+  }
+
+  static Future<List<dynamic>> getQuizQuestions(int quizId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/quizzes/$quizId/questions/'),
+      headers: await getHeaders(includeAuth: false),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> submitQuiz(int quizId, Map<String, int> answers) async {
+    // Convert answers to string keys as backend expects
+    final answersMap = answers.map((k, v) => MapEntry(k.toString(), v));
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/results/submit/'),
+      headers: await getHeaders(),
+      body: jsonEncode({
+        'quiz_id': quizId,
+        'answers': answersMap,
+      }),
+    );
+    
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to submit quiz: ${response.body}');
+    }
+  }
+
+  // Results APIs
+  static Future<List<dynamic>> getResults() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/results/'),
+      headers: await getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> getResultDetails(int resultId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/results/$resultId/details/'),
+      headers: await getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load result details');
+    }
+  }
+
+  // Analytics API
+  static Future<Map<String, dynamic>> getAnalytics() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/analytics/'),
+      headers: await getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // Study Materials APIs
+  static Future<List<dynamic>> getStudyMaterials({String? category}) async {
+    String url = '$baseUrl/study-materials/';
+    if (category != null) {
+      url += '?category=$category';
+    }
+    final response = await http.get(Uri.parse(url), headers: await getHeaders(includeAuth: false));
+    return jsonDecode(response.body);
+  }
+
+  static Future<void> incrementDownload(int materialId) async {
+    await http.post(
+      Uri.parse('$baseUrl/study-materials/$materialId/increment_download/'),
+      headers: await getHeaders(),
+    );
+  }
+
+  // Notifications APIs
+  static Future<List<dynamic>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications/'),
+      headers: await getHeaders(includeAuth: false),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // Profile APIs
+  static Future<Map<String, dynamic>> getProfile() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/profile/'),
+      headers: await getHeaders(),
+    );
+    final data = jsonDecode(response.body);
+    return data.isNotEmpty ? data[0] : {};
+  }
+
+  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
+    final currentProfile = await getProfile();
+    final method = currentProfile.isEmpty ? 'POST' : 'PUT';
+    final url = currentProfile.isEmpty 
+        ? '$baseUrl/profile/' 
+        : '$baseUrl/profile/${currentProfile['id']}/';
+    
+    final response = method == 'POST'
+        ? await http.post(Uri.parse(url), headers: await getHeaders(), body: jsonEncode(profileData))
+        : await http.put(Uri.parse(url), headers: await getHeaders(), body: jsonEncode(profileData));
+    
+    return jsonDecode(response.body);
+  }
+}
+

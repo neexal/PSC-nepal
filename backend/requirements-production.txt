@@ -1,0 +1,8 @@
+# Production requirements (includes all base requirements + PostgreSQL)
+-r requirements.txt
+
+# PostgreSQL adapter for production database
+psycopg2-binary>=2.9.9
+
+# Note: On Render/Railway, psycopg2-binary will install automatically
+# with pre-built wheels for Linux, so no build tools needed.
