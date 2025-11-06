@@ -8,6 +8,7 @@ class ApiConfig {
   // Set this to true if testing on a physical Android device
   // Set to false if using Android emulator
   static const bool usePhysicalDevice = true;
+  static String get baseUrl => 'https://psc-nepal-backend.onrender.com/api';
   
   // If using physical device, set your computer's IP address here
   // To find your IP:
