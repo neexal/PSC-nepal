@@ -5,10 +5,16 @@ class ApiConfig {
   // CONFIGURATION
   // ============================================
   
+  // Set this to true to use production backend (Render)
+  // Set to false to use local development backend
+  static const bool useProductionBackend = true;
+  
+  // Production backend URL
+  static const String productionUrl = 'https://psc-nepal-backend.onrender.com/api';
+  
   // Set this to true if testing on a physical Android device
   // Set to false if using Android emulator
   static const bool usePhysicalDevice = true;
-  static String get baseUrl => 'https://psc-nepal-backend.onrender.com/api';
   
   // If using physical device, set your computer's IP address here
   // To find your IP:
@@ -22,6 +28,12 @@ class ApiConfig {
   // ============================================
   
   static String get baseUrl {
+    // Use production backend if enabled
+    if (useProductionBackend) {
+      return productionUrl;
+    }
+    
+    // Otherwise use local development
     if (Platform.isAndroid) {
       if (usePhysicalDevice) {
         // Physical Android device - use computer's IP
@@ -41,6 +53,10 @@ class ApiConfig {
   
   static String get wsUrl {
     // For WebSocket connections (if needed in future)
+    if (useProductionBackend) {
+      return 'wss://psc-nepal-backend.onrender.com';
+    }
+    
     if (Platform.isAndroid) {
       if (usePhysicalDevice) {
         return 'ws://$computerIpAddress:8000';
@@ -54,6 +70,10 @@ class ApiConfig {
   
   // Helper to display current configuration
   static String get currentConfig {
+    if (useProductionBackend) {
+      return 'Production: psc-nepal-backend.onrender.com';
+    }
+    
     if (Platform.isAndroid) {
       if (usePhysicalDevice) {
         return 'Physical Device: $computerIpAddress';
