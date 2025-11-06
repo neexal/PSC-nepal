@@ -17,7 +17,7 @@ User = get_user_model()
 
 username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'neexal')
 email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'pakaukhaujau@gmail.com')
-password = os.environ.get('S@diksh@123')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')  
 
 if not password:
     print("ERROR: DJANGO_SUPERUSER_PASSWORD environment variable not set!")
