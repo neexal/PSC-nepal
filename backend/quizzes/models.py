@@ -151,3 +151,46 @@ class Streak(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.current_streak}"
+
+class Bookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='bookmarks')
+    result = models.ForeignKey(Result, on_delete=models.CASCADE, null=True, blank=True, related_name='bookmarks')
+    notes = models.TextField(blank=True, help_text="Personal notes for this question")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'question']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.question.question_text[:30]}"
+
+class QuestionReport(models.Model):
+    ISSUE_TYPES = [
+        ('wrong_answer', 'Wrong Correct Answer'),
+        ('typo', 'Typo/Grammar Error'),
+        ('unclear', 'Unclear Question'),
+        ('wrong_options', 'Wrong Options'),
+        ('other', 'Other Issue'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='reports')
+    issue_type = models.CharField(max_length=20, choices=ISSUE_TYPES)
+    description = models.TextField(help_text="Detailed description of the issue")
+    status = models.CharField(max_length=20, default='pending', choices=[
+        ('pending', 'Pending'),
+        ('reviewing', 'Under Review'),
+        ('resolved', 'Resolved'),
+        ('rejected', 'Rejected'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    admin_notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report by {self.user.username} - {self.issue_type}"

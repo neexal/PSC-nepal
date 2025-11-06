@@ -31,13 +31,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: isDarkMode ? AppTheme.darkSurface : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
               blurRadius: 10,
               offset: Offset(0, -5),
             ),
@@ -52,11 +55,11 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           type: BottomNavigationBarType.fixed,
           selectedItemColor: AppTheme.primaryBlue,
-          unselectedItemColor: AppTheme.textSecondary,
+          unselectedItemColor: isDarkMode ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
           selectedFontSize: 12,
           unselectedFontSize: 12,
           elevation: 0,
-          backgroundColor: Colors.white,
+          backgroundColor: isDarkMode ? AppTheme.darkSurface : Colors.white,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),

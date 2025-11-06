@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -5,13 +6,16 @@ import '../services/api_service.dart';
 class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoggedIn = false;
+  bool _isLoading = true;
   Map<String, dynamic>? _user;
   Map<String, dynamic>? _profile;
 
   bool get isLoggedIn => _isLoggedIn;
+  bool get isLoading => _isLoading;
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
   Map<String, dynamic>? get profile => _profile;
+  String get username => _user?['username'] ?? _profile?['user']?['username'] ?? 'Student';
 
   Future<void> login(String username, String password) async {
     try {
@@ -23,9 +27,14 @@ class AuthProvider with ChangeNotifier {
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', _token!);
+      await prefs.setString('user', jsonEncode(_user));
+      if (_profile != null) {
+        await prefs.setString('profile', jsonEncode(_profile));
+      }
       
       notifyListeners();
     } catch (e) {
+      _isLoggedIn = false;
       throw Exception('Login failed: $e');
     }
   }
@@ -53,24 +62,57 @@ class AuthProvider with ChangeNotifier {
     _profile = null;
     
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await prefs.clear();
     
     notifyListeners();
   }
 
   Future<void> loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('token');
-    _isLoggedIn = _token != null;
+    _isLoading = true;
+    notifyListeners();
     
-    if (_isLoggedIn) {
-      try {
-        _profile = await ApiService.getProfile();
-      } catch (e) {
-        // Profile might not exist yet
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _token = prefs.getString('token');
+      
+      if (_token != null) {
+        // Load cached user data
+        final userStr = prefs.getString('user');
+        final profileStr = prefs.getString('profile');
+        
+        if (userStr != null) {
+          _user = jsonDecode(userStr);
+        }
+        if (profileStr != null) {
+          _profile = jsonDecode(profileStr);
+        }
+        
+        // Verify token with backend
+        try {
+          final profileData = await ApiService.getProfile();
+          _profile = profileData;
+          _user = profileData['user'];
+          _isLoggedIn = true;
+          
+          // Update cached data
+          await prefs.setString('user', jsonEncode(_user));
+          await prefs.setString('profile', jsonEncode(_profile));
+        } catch (e) {
+          // Token invalid, clear everything
+          _token = null;
+          _user = null;
+          _profile = null;
+          _isLoggedIn = false;
+          await prefs.clear();
+        }
+      } else {
+        _isLoggedIn = false;
       }
+    } catch (e) {
+      _isLoggedIn = false;
     }
     
+    _isLoading = false;
     notifyListeners();
   }
 }

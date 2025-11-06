@@ -3,7 +3,10 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib import messages
 import json
-from .models import Quiz, Question, Result, StudyMaterial, Notification, UserProfile, Subject, Badge, Streak
+from .models import (
+    Quiz, Question, Result, StudyMaterial, Notification, 
+    UserProfile, Subject, Badge, Streak, Bookmark, QuestionReport
+)
 
 
 class QuizAdminForm(forms.ModelForm):
@@ -198,3 +201,33 @@ class BadgeAdmin(admin.ModelAdmin):
 class StreakAdmin(admin.ModelAdmin):
     list_display = ['user', 'current_streak', 'longest_streak']
     search_fields = ['user__username']
+
+@admin.register(Bookmark)
+class BookmarkAdmin(admin.ModelAdmin):
+    list_display = ['user', 'question', 'quiz_title', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'question__question_text']
+    
+    def quiz_title(self, obj):
+        return obj.question.quiz.title
+    quiz_title.short_description = 'Quiz'
+
+@admin.register(QuestionReport)
+class QuestionReportAdmin(admin.ModelAdmin):
+    list_display = ['user', 'question_preview', 'issue_type', 'status', 'created_at']
+    list_filter = ['issue_type', 'status', 'created_at']
+    search_fields = ['user__username', 'question__question_text', 'description']
+    readonly_fields = ['user', 'question', 'issue_type', 'description', 'created_at']
+    
+    fieldsets = (
+        ('Report Information', {
+            'fields': ('user', 'question', 'issue_type', 'description', 'created_at')
+        }),
+        ('Admin Actions', {
+            'fields': ('status', 'admin_notes', 'resolved_at')
+        }),
+    )
+    
+    def question_preview(self, obj):
+        return obj.question.question_text[:50] + '...' if len(obj.question.question_text) > 50 else obj.question.question_text
+    question_preview.short_description = 'Question'

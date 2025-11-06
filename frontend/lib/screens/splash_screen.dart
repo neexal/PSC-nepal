@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   SizedBox(height: 32),
                   Text(
-                    'PSC Nepal',
+                    'PSC Nepal Prep',
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,

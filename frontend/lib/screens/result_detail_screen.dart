@@ -19,6 +19,7 @@ class ResultDetailScreen extends StatefulWidget {
 class _ResultDetailScreenState extends State<ResultDetailScreen> {
   Map<String, dynamic>? resultData;
   bool isLoading = true;
+  Set<int> bookmarkedQuestions = {};
 
   @override
   void initState() {
@@ -52,6 +53,143 @@ class _ResultDetailScreenState extends State<ResultDetailScreen> {
     if (score >= 80) return AppTheme.successGreen;
     if (score >= 60) return AppTheme.warningOrange;
     return AppTheme.errorRed;
+  }
+
+  Future<void> toggleBookmark(int questionId) async {
+    try {
+      final result = await ApiService.toggleBookmark(questionId);
+      setState(() {
+        if (result['bookmarked'] == true) {
+          bookmarkedQuestions.add(questionId);
+        } else {
+          bookmarkedQuestions.remove(questionId);
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: AppTheme.successGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to bookmark'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  void showReportDialog(int questionId, String questionText) {
+    String? issueType = 'wrong_answer';
+    final descriptionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Report Question'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Report an issue with this question:',
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                ),
+                SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: issueType,
+                  decoration: InputDecoration(
+                    labelText: 'Issue Type',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: 'wrong_answer', child: Text('Wrong Correct Answer')),
+                    DropdownMenuItem(value: 'typo', child: Text('Typo/Grammar Error')),
+                    DropdownMenuItem(value: 'unclear', child: Text('Unclear Question')),
+                    DropdownMenuItem(value: 'wrong_options', child: Text('Wrong Options')),
+                    DropdownMenuItem(value: 'other', child: Text('Other Issue')),
+                  ],
+                  onChanged: (val) => setState(() => issueType = val),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Explain the issue in detail...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  maxLines: 4,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (descriptionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Please provide a description'),
+                      backgroundColor: AppTheme.warningOrange,
+                    ),
+                  );
+                  return;
+                }
+                
+                try {
+                  await ApiService.reportQuestion(
+                    questionId: questionId,
+                    issueType: issueType!,
+                    description: descriptionController.text.trim(),
+                  );
+                  
+                  Navigator.pop(context);
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Thank you! Report submitted successfully.'),
+                        backgroundColor: AppTheme.successGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  Navigator.pop(context);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to submit report'),
+                        backgroundColor: AppTheme.errorRed,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text('Submit Report'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -273,6 +411,63 @@ class _ResultDetailScreenState extends State<ResultDetailScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryBlue,
                   ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          
+          // Action Buttons
+          Row(
+            children: [
+              // Bookmark Button
+              TextButton.icon(
+                onPressed: () => toggleBookmark(question['id']),
+                icon: Icon(
+                  bookmarkedQuestions.contains(question['id'])
+                      ? Icons.bookmark
+                      : Icons.bookmark_border,
+                  size: 18,
+                  color: bookmarkedQuestions.contains(question['id'])
+                      ? Colors.orange
+                      : AppTheme.textSecondary,
+                ),
+                label: Text(
+                  'Bookmark',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              SizedBox(width: 8),
+              // Report Button
+              TextButton.icon(
+                onPressed: () => showReportDialog(
+                  question['id'],
+                  question['question_text'],
+                ),
+                icon: Icon(
+                  Icons.flag_outlined,
+                  size: 18,
+                  color: AppTheme.textSecondary,
+                ),
+                label: Text(
+                  'Report',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],

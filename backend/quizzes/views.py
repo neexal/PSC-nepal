@@ -7,12 +7,77 @@ from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.db.models import Q, Avg, Count
-from .models import Quiz, Question, Result, StudyMaterial, Notification, UserProfile, Subject, Badge, Streak
+from django.utils import timezone
+from datetime import timedelta
+from .models import (
+    Quiz, Question, Result, StudyMaterial, Notification, UserProfile, 
+    Subject, Badge, Streak, Bookmark, QuestionReport
+)
 from .serializers import (
     QuizSerializer, QuestionSerializer, ResultSerializer, UserSerializer,
     StudyMaterialSerializer, NotificationSerializer, UserProfileSerializer,
-    SubjectSerializer, BadgeSerializer, StreakSerializer
+    SubjectSerializer, BadgeSerializer, StreakSerializer, BookmarkSerializer, QuestionReportSerializer
 )
+
+def update_user_streak(user):
+    """Update user's streak based on their quiz activity"""
+    streak, created = Streak.objects.get_or_create(user=user)
+    today = timezone.now().date()
+    
+    if created or streak.last_active_date is None:
+        # First time taking a quiz
+        streak.current_streak = 1
+        streak.longest_streak = 1
+        streak.last_active_date = today
+        streak.save()
+        print(f"Streak initialized for {user.username}: 1 day")
+        return
+    
+    # Check if already took a quiz today
+    if streak.last_active_date == today:
+        # Already took a quiz today, no change
+        print(f"Streak unchanged for {user.username}: already active today")
+        return
+    
+    # Check if it's consecutive days
+    yesterday = today - timedelta(days=1)
+    if streak.last_active_date == yesterday:
+        # Consecutive day! Increment streak
+        streak.current_streak += 1
+        if streak.current_streak > streak.longest_streak:
+            streak.longest_streak = streak.current_streak
+        streak.last_active_date = today
+        streak.save()
+        print(f"Streak increased for {user.username}: {streak.current_streak} days")
+        
+        # Award 7-day streak badge
+        if streak.current_streak >= 7:
+            award_badge(user, 'streak_7')
+    else:
+        # Streak broken, reset to 1
+        streak.current_streak = 1
+        streak.last_active_date = today
+        streak.save()
+        print(f"Streak reset for {user.username}: was inactive since {streak.last_active_date}")
+
+def award_badge(user, badge_type):
+    """Award a badge to user if they don't have it already"""
+    badge, created = Badge.objects.get_or_create(user=user, type=badge_type)
+    if created:
+        print(f"🏆 Badge '{badge_type}' awarded to {user.username}!")
+        return True
+    return False
+
+def check_and_award_badges(user, score):
+    """Check if user earned any badges and award them"""
+    # Award 90%+ score badge
+    if score >= 90:
+        award_badge(user, 'score_90')
+    
+    # Award 10 quizzes badge
+    total_quizzes = Result.objects.filter(user=user).count()
+    if total_quizzes >= 10:
+        award_badge(user, 'attempt_10')
 
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
@@ -90,6 +155,12 @@ class ResultViewSet(viewsets.ModelViewSet):
                 wrong_count=wrong_count,
                 answers=answers  # Store user answers
             )
+
+            # Update user streak
+            update_user_streak(request.user)
+            
+            # Check and award badges
+            check_and_award_badges(request.user, score)
 
             serializer = ResultSerializer(result)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -171,6 +242,52 @@ class StreakViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class BookmarkViewSet(viewsets.ModelViewSet):
+    serializer_class = BookmarkSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Bookmark.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        """Toggle bookmark for a question"""
+        question_id = request.data.get('question_id')
+        if not question_id:
+            return Response({'error': 'question_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            question = Question.objects.get(id=question_id)
+            bookmark = Bookmark.objects.filter(user=request.user, question=question).first()
+            
+            if bookmark:
+                bookmark.delete()
+                return Response({'message': 'Bookmark removed', 'bookmarked': False})
+            else:
+                bookmark = Bookmark.objects.create(user=request.user, question=question)
+                return Response({
+                    'message': 'Bookmark added',
+                    'bookmarked': True,
+                    'bookmark': BookmarkSerializer(bookmark).data
+                }, status=status.HTTP_201_CREATED)
+        except Question.DoesNotExist:
+            return Response({'error': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class QuestionReportViewSet(viewsets.ModelViewSet):
+    serializer_class = QuestionReportSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return QuestionReport.objects.all()
+        return QuestionReport.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, status='pending')
 
 # Custom auth views
 @api_view(['POST'])
@@ -307,15 +424,14 @@ def analytics(request):
     )
     
     # Streak and badges
-    streak = None
+    current_streak = 0
+    longest_streak = 0
     try:
         s = Streak.objects.get(user=user)
-        streak = {
-            'current_streak': s.current_streak,
-            'longest_streak': s.longest_streak,
-        }
+        current_streak = s.current_streak
+        longest_streak = s.longest_streak
     except Streak.DoesNotExist:
-        streak = {'current_streak': 0, 'longest_streak': 0}
+        pass
 
     badges = list(Badge.objects.filter(user=user).values('type', 'date_awarded'))
 
@@ -325,6 +441,8 @@ def analytics(request):
         'category_stats': list(category_stats),
         'recent_scores': recent_scores,
         'weak_topics': list(weak_topics),
-        'streak': streak,
+        'current_streak': current_streak,
+        'longest_streak': longest_streak,
         'badges': badges,
+        'user_name': user.username,
     })

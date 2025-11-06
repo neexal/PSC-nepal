@@ -210,5 +210,49 @@ class ApiService {
     
     return jsonDecode(response.body);
   }
+
+  // Bookmarks APIs
+  static Future<List<dynamic>> getBookmarks() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/bookmarks/'),
+      headers: await getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<Map<String, dynamic>> toggleBookmark(int questionId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/bookmarks/toggle/'),
+      headers: await getHeaders(),
+      body: jsonEncode({'question_id': questionId}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // Reports APIs
+  static Future<Map<String, dynamic>> reportQuestion({
+    required int questionId,
+    required String issueType,
+    required String description,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reports/'),
+      headers: await getHeaders(),
+      body: jsonEncode({
+        'question': questionId,
+        'issue_type': issueType,
+        'description': description,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  static Future<List<dynamic>> getMyReports() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/reports/'),
+      headers: await getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
 }
 

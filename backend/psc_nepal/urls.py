@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from quizzes.views import (
     QuizViewSet, QuestionViewSet, ResultViewSet, register, login,
     StudyMaterialViewSet, NotificationViewSet, UserProfileViewSet, analytics,
-    SubjectViewSet, BadgeViewSet, StreakViewSet
+    SubjectViewSet, BadgeViewSet, StreakViewSet, BookmarkViewSet, QuestionReportViewSet
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -21,6 +21,8 @@ router.register(r'profile', UserProfileViewSet, basename='profile')
 router.register(r'subjects', SubjectViewSet, basename='subject')
 router.register(r'badges', BadgeViewSet, basename='badge')
 router.register(r'streak', StreakViewSet, basename='streak')
+router.register(r'bookmarks', BookmarkViewSet, basename='bookmark')
+router.register(r'reports', QuestionReportViewSet, basename='report')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

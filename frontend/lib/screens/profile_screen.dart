@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
@@ -397,6 +398,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                   ),
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // Dark Mode Toggle
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, _) {
+                    return Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: themeProvider.isDarkMode
+                                ? Colors.orange.withOpacity(0.1)
+                                : AppTheme.primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            themeProvider.isDarkMode
+                                ? Icons.dark_mode_rounded
+                                : Icons.light_mode_rounded,
+                            color: themeProvider.isDarkMode
+                                ? Colors.orange
+                                : AppTheme.primaryBlue,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Dark Mode',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                themeProvider.isDarkMode
+                                    ? 'Dark theme enabled'
+                                    : 'Light theme enabled',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: themeProvider.isDarkMode,
+                          onChanged: (_) => themeProvider.toggleTheme(),
+                          activeColor: Colors.orange,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               SizedBox(height: 16),

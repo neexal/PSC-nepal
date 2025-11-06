@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 import 'quiz_list_screen.dart';
 import 'study_materials_screen.dart';
 import 'result_detail_screen.dart';
@@ -109,7 +111,8 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
   }
 
   Widget _buildHeader() {
-    final userName = analytics['user_name'] ?? 'Student';
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userName = authProvider.username;
     final streak = analytics['current_streak'] ?? 0;
     
     return Column(
@@ -178,9 +181,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
   }
 
   Widget _buildProgressCard() {
-    final totalQuizzes = analytics['total_quizzes_taken'] ?? 0;
+    final totalQuizzes = analytics['total_quizzes'] ?? 0;
     final avgScore = (analytics['average_score'] ?? 0.0).toDouble();
-    final badges = analytics['badges_earned'] ?? 0;
+    final badges = (analytics['badges'] is List) ? (analytics['badges'] as List).length : 0;
     
     return FadeTransition(
       opacity: _cardController,

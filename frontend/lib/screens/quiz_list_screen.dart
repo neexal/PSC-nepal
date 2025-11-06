@@ -12,10 +12,13 @@ class QuizListScreen extends StatefulWidget {
 
 class _QuizListScreenState extends State<QuizListScreen> {
   List<dynamic> quizzes = [];
+  List<dynamic> filteredQuizzes = [];
   List<dynamic> userResults = [];
   Map<int, Map<String, dynamic>> completionStatus = {}; // quizId -> {score, attempts}
   bool isLoading = true;
   String? selectedCategory;
+  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> categories = [
     'All',
@@ -71,6 +74,21 @@ class _QuizListScreenState extends State<QuizListScreen> {
     }
   }
 
+  void _filterQuizzes() {
+    setState(() {
+      filteredQuizzes = quizzes.where((quiz) {
+        final matchesSearch = searchQuery.isEmpty ||
+            quiz['title'].toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
+            (quiz['topic'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase());
+        
+        final matchesCategory = selectedCategory == null ||
+            quiz['category'] == selectedCategory;
+        
+        return matchesSearch && matchesCategory;
+      }).toList();
+    });
+  }
+
   Future<void> fetchQuizzes({String? category}) async {
     setState(() {
       isLoading = true;
@@ -81,8 +99,10 @@ class _QuizListScreenState extends State<QuizListScreen> {
       final data = await ApiService.getQuizzes(category: selectedCategory);
       setState(() {
         quizzes = data;
+        filteredQuizzes = data;
         isLoading = false;
       });
+      _filterQuizzes();
     } catch (e) {
       setState(() {
         isLoading = false;
@@ -127,6 +147,39 @@ class _QuizListScreenState extends State<QuizListScreen> {
       ),
       body: Column(
         children: [
+          // Search Bar
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search quizzes...',
+                prefixIcon: Icon(Icons.search),
+                suffixIcon: searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            searchQuery = '';
+                          });
+                          _filterQuizzes();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+                _filterQuizzes();
+              },
+            ),
+          ),
           // Category Filter
           Container(
             height: 60,
@@ -206,9 +259,9 @@ class _QuizListScreenState extends State<QuizListScreen> {
                             fetchQuizzes(category: selectedCategory ?? 'All'),
                         child: ListView.builder(
                           padding: EdgeInsets.all(16),
-                          itemCount: quizzes.length,
+                          itemCount: filteredQuizzes.length,
                           itemBuilder: (context, index) {
-                            final quiz = quizzes[index];
+                            final quiz = filteredQuizzes[index];
                             final quizId = quiz['id'];
                             final isCompleted = completionStatus.containsKey(quizId);
                             final bestScore = isCompleted ? completionStatus[quizId]!['bestScore'] : 0.0;
@@ -466,5 +519,11 @@ class _QuizListScreenState extends State<QuizListScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }

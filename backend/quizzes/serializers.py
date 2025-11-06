@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Quiz, Question, Result, StudyMaterial, Notification, UserProfile, Subject, Badge, Streak
+from .models import (
+    Quiz, Question, Result, StudyMaterial, Notification, 
+    UserProfile, Subject, Badge, Streak, Bookmark, QuestionReport
+)
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,3 +62,23 @@ class StreakSerializer(serializers.ModelSerializer):
     class Meta:
         model = Streak
         fields = '__all__'
+
+class BookmarkSerializer(serializers.ModelSerializer):
+    question_text = serializers.CharField(source='question.question_text', read_only=True)
+    quiz_title = serializers.CharField(source='question.quiz.title', read_only=True)
+    quiz_id = serializers.IntegerField(source='question.quiz.id', read_only=True)
+    
+    class Meta:
+        model = Bookmark
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']
+
+class QuestionReportSerializer(serializers.ModelSerializer):
+    question_text = serializers.CharField(source='question.question_text', read_only=True)
+    quiz_title = serializers.CharField(source='question.quiz.title', read_only=True)
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = QuestionReport
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'status']
