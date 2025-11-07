@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/banner_ad_widget.dart';
 import 'quiz_list_screen.dart';
 import 'results_screen.dart';
 import 'study_materials_screen.dart';
@@ -35,7 +36,13 @@ class _HomeScreenState extends State<HomeScreen> {
     
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: Container(
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Banner Ad
+          const BannerAdWidget(),
+          // Bottom Navigation Bar
+          Container(
         decoration: BoxDecoration(
           color: isDarkMode ? AppTheme.darkSurface : Colors.white,
           boxShadow: [
@@ -88,6 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+          ),
+        ],
       ),
     );
   }
