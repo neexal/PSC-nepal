@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from quizzes.views import (
     QuizViewSet, QuestionViewSet, ResultViewSet, register, login,
     StudyMaterialViewSet, NotificationViewSet, UserProfileViewSet, analytics,
     SubjectViewSet, BadgeViewSet, StreakViewSet, BookmarkViewSet, QuestionReportViewSet,
