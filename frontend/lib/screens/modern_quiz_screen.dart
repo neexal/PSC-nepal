@@ -34,6 +34,8 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
 
+  Set<int> bookmarkedQuestions = {};
+
   @override
   void initState() {
     super.initState();
@@ -55,28 +57,58 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
     );
     
     fetchQuestions();
+    fetchBookmarks();
     startTimer();
     _slideController.forward();
     _scaleController.forward();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _slideController.dispose();
-    _scaleController.dispose();
-    super.dispose();
+  Future<void> fetchBookmarks() async {
+    try {
+      final token = await ApiService.getToken();
+      if (token != null) {
+        final bookmarks = await ApiService.getBookmarks(token);
+        setState(() {
+          bookmarkedQuestions = bookmarks
+              .map((b) => b['question'] is int ? b['question'] as int : (b['question']['id'] as int))
+              .toSet();
+        });
+      }
+    } catch (e) {
+      print('Error fetching bookmarks: $e');
+    }
   }
 
-  void startTimer() {
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (remainingSeconds > 0) {
-        setState(() => remainingSeconds--);
-      } else {
-        timer.cancel();
-        submitQuiz();
+  Future<void> toggleBookmark(int questionId) async {
+    try {
+      final token = await ApiService.getToken();
+      if (token != null) {
+        // Optimistic update
+        setState(() {
+          if (bookmarkedQuestions.contains(questionId)) {
+            bookmarkedQuestions.remove(questionId);
+          } else {
+            bookmarkedQuestions.add(questionId);
+          }
+        });
+        
+        await ApiService.toggleBookmark(token, questionId);
       }
-    });
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        if (bookmarkedQuestions.contains(questionId)) {
+          bookmarkedQuestions.remove(questionId);
+        } else {
+          bookmarkedQuestions.add(questionId);
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update bookmark')),
+        );
+      }
+    }
   }
 
   Future<void> fetchQuestions() async {
@@ -325,22 +357,39 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              question['difficulty']?.toString().toUpperCase() ?? 'MEDIUM',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    question['difficulty']?.toString().toUpperCase() ?? 'MEDIUM',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    bookmarkedQuestions.contains(question['id']) 
+                        ? Icons.bookmark_rounded 
+                        : Icons.bookmark_border_rounded,
+                    color: bookmarkedQuestions.contains(question['id']) 
+                        ? Color(0xFF667eea) 
+                        : Color(0xFFCBD5E0),
+                  ),
+                  onPressed: () => toggleBookmark(question['id']),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 24),

@@ -131,30 +131,6 @@ class ApiService {
     }
   }
 
-  // Results APIs
-  static Future<List<dynamic>> getResults() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/results/'),
-      headers: await getHeaders(),
-    );
-    return jsonDecode(response.body);
-  }
-
-  static Future<Map<String, dynamic>> getResultDetails(int resultId) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/results/$resultId/details/'),
-      headers: await getHeaders(),
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to load result details');
-    }
-  }
-
-  // Analytics API
-  static Future<Map<String, dynamic>> getAnalytics() async {
-    final response = await http.get(
       Uri.parse('$baseUrl/analytics/'),
       headers: await getHeaders(),
     );
@@ -253,6 +229,71 @@ class ApiService {
       headers: await getHeaders(),
     );
     return jsonDecode(response.body);
+  }
+  static Future<Map<String, dynamic>> googleLogin(String email, String? name, String? photoUrl) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/google/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'name': name,
+        'photoUrl': photoUrl,
+        'token': 'dummy_token', // In real app, send ID token
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to login with Google: ${response.body}');
+    }
+  }
+
+  static Future<List<dynamic>> getLeaderboard(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/leaderboard/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load leaderboard');
+    }
+  }
+
+  static Future<List<dynamic>> getBookmarks(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/bookmarks/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load bookmarks');
+    }
+  }
+
+  static Future<void> toggleBookmark(String token, int questionId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/bookmarks/toggle/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token $token',
+      },
+      body: jsonEncode({'question_id': questionId}),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to toggle bookmark');
+    }
   }
 }
 

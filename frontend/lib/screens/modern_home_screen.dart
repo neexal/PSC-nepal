@@ -7,6 +7,8 @@ import '../providers/auth_provider.dart';
 import 'quiz_list_screen.dart';
 import 'study_materials_screen.dart';
 import 'result_detail_screen.dart';
+import 'leaderboard_screen.dart';
+import 'bookmarks_screen.dart';
 
 class ModernHomeScreen extends StatefulWidget {
   const ModernHomeScreen({super.key});
@@ -401,6 +403,44 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => StudyMaterialsScreen()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.leaderboard_rounded,
+                title: 'Leaderboard',
+                subtitle: 'Top rankers',
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF6AD55), Color(0xFFED8936)],
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => LeaderboardScreen()),
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                icon: Icons.bookmark_rounded,
+                title: 'Bookmarks',
+                subtitle: 'Saved questions',
+                gradient: LinearGradient(
+                  colors: [Color(0xFF68D391), Color(0xFF48BB78)],
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BookmarksScreen()),
                   );
                 },
               ),

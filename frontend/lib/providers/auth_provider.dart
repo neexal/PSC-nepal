@@ -20,23 +20,37 @@ class AuthProvider with ChangeNotifier {
   Future<void> login(String username, String password) async {
     try {
       final data = await ApiService.login(username, password);
-      _token = data['token'];
-      _user = data['user'];
-      _profile = data['profile'];
-      _isLoggedIn = true;
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', _token!);
-      await prefs.setString('user', jsonEncode(_user));
-      if (_profile != null) {
-        await prefs.setString('profile', jsonEncode(_profile));
-      }
-      
-      notifyListeners();
+      _handleLoginSuccess(data);
     } catch (e) {
       _isLoggedIn = false;
       throw Exception('Login failed: $e');
     }
+  }
+
+  Future<void> googleLogin(String email, String? name, String? photoUrl) async {
+    try {
+      final data = await ApiService.googleLogin(email, name, photoUrl);
+      _handleLoginSuccess(data);
+    } catch (e) {
+      _isLoggedIn = false;
+      throw Exception('Google Login failed: $e');
+    }
+  }
+
+  Future<void> _handleLoginSuccess(Map<String, dynamic> data) async {
+    _token = data['token'];
+    _user = data['user'];
+    _profile = data['profile'];
+    _isLoggedIn = true;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', _token!);
+    await prefs.setString('user', jsonEncode(_user));
+    if (_profile != null) {
+      await prefs.setString('profile', jsonEncode(_profile));
+    }
+    
+    notifyListeners();
   }
 
   Future<void> register(String username, String email, String password) async {

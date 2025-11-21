@@ -263,6 +263,81 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                       ),
                     ),
+                    SizedBox(height: 16),
+                    // Google Sign-In Button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                setState(() {
+                                  _isLoading = true;
+                                });
+                                try {
+                                  // In a real app, use GoogleSignIn to get credentials
+                                  // For now, we'll simulate it or use a placeholder
+                                  // final googleUser = await GoogleSignIn().signIn();
+                                  // final googleAuth = await googleUser?.authentication;
+                                  
+                                  // Simulating a Google login for demonstration
+                                  // You would pass googleAuth.idToken here
+                                  await Provider.of<AuthProvider>(context, listen: false)
+                                      .googleLogin('demo@gmail.com', 'Demo User', null);
+
+                                  if (mounted) {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (_) => const HomeScreen(),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Google Login Error: $e')),
+                                    );
+                                  }
+                                } finally {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isLoading = false;
+                                    });
+                                  }
+                                }
+                              },
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: Image.asset(
+                          'assets/google_logo.png', // Make sure to add this asset or use an Icon
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) => Icon(Icons.login, color: Colors.red),
+                        ),
+                        label: Text(
+                          'Sign in with Google',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
                     SizedBox(height: 24),
                     // Toggle Login/Register
                     TextButton(

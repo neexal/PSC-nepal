@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from quizzes.views import (
     QuizViewSet, QuestionViewSet, ResultViewSet, register, login,
     StudyMaterialViewSet, NotificationViewSet, UserProfileViewSet, analytics,
-    SubjectViewSet, BadgeViewSet, StreakViewSet, BookmarkViewSet, QuestionReportViewSet
+    SubjectViewSet, BadgeViewSet, StreakViewSet, BookmarkViewSet, QuestionReportViewSet,
+    leaderboard, google_login
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -35,4 +35,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # path('api/auth/', include('rest_framework.urls')),  # Commented out - using custom auth
     path('api/analytics/', analytics, name='analytics'),
+    path('api/leaderboard/', leaderboard, name='leaderboard'),
+    path('api/auth/google/', google_login, name='google_login'),
 ]

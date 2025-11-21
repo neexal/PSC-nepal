@@ -6,7 +6,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from django.db.models import Q, Avg, Count
+from django.db.models import Q, Avg, Count, Sum
 from django.utils import timezone
 from datetime import timedelta
 from .models import (
@@ -445,4 +445,77 @@ def analytics(request):
         'longest_streak': longest_streak,
         'badges': badges,
         'user_name': user.username,
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def leaderboard(request):
+    """Get top 20 users by total score"""
+    # Calculate total score for each user
+    top_users = User.objects.annotate(
+        total_score=Sum('result__score'),
+        quizzes_taken=Count('result')
+    ).exclude(total_score__isnull=True).order_by('-total_score')[:20]
+    
+    leaderboard_data = []
+    for rank, user in enumerate(top_users, 1):
+        profile = UserProfile.objects.filter(user=user).first()
+        leaderboard_data.append({
+            'rank': rank,
+            'username': user.username,
+            'total_score': round(user.total_score, 2),
+            'quizzes_taken': user.quizzes_taken,
+            'profile_picture': profile.profile_picture if profile else None,
+            'is_current_user': user == request.user
+        })
+        
+    return Response(leaderboard_data)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def google_login(request):
+    """Handle Google Sign-In"""
+    token = request.data.get('token')
+    email = request.data.get('email')
+    name = request.data.get('name')
+    photo_url = request.data.get('photoUrl')
+    
+    if not email:
+        return Response({'error': 'Email is required'}, status=400)
+        
+    # Check if user exists
+    try:
+        user = User.objects.get(email=email)
+        created = False
+    except User.DoesNotExist:
+        # Create new user
+        username = email.split('@')[0]
+        # Ensure unique username
+        base_username = username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+            
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=User.objects.make_random_password()
+        )
+        created = True
+        
+    # Get or create profile
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    if photo_url and not profile.profile_picture:
+        profile.profile_picture = photo_url
+        profile.save()
+        
+    # Generate token
+    token, _ = Token.objects.get_or_create(user=user)
+    
+    return Response({
+        'token': token.key,
+        'user': UserSerializer(user).data,
+        'profile': UserProfileSerializer(profile).data,
+        'created': created
     })
