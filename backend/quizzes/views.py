@@ -6,17 +6,23 @@ from rest_framework.authtoken.models import Token
 from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from django.db.models import Q, Avg, Count, Sum
+from django.db.models import Q, Avg, Count, Sum, Max
 from django.utils import timezone
 from datetime import timedelta
 from .models import (
-    Quiz, Question, Result, StudyMaterial, Notification, UserProfile, 
-    Subject, Badge, Streak, Bookmark, QuestionReport
+    Quiz, Question, Result, StudyMaterial, Notification, UserProfile,
+    Subject, Badge, Streak, Bookmark, QuestionReport, Achievement,
+    UserAnalytics, DailyChallenge, ChallengeParticipation,
+    QuestionFeedback, ForumPost, ForumComment
 )
 from .serializers import (
     QuizSerializer, QuestionSerializer, ResultSerializer, UserSerializer,
     StudyMaterialSerializer, NotificationSerializer, UserProfileSerializer,
-    SubjectSerializer, BadgeSerializer, StreakSerializer, BookmarkSerializer, QuestionReportSerializer
+    SubjectSerializer, BadgeSerializer, StreakSerializer, BookmarkSerializer,
+    QuestionReportSerializer, AchievementSerializer, UserAnalyticsSerializer,
+    DailyChallengeSerializer, ChallengeParticipationSerializer,
+    LeaderboardEntrySerializer, QuestionFeedbackSerializer,
+    ForumPostSerializer, ForumCommentSerializer
 )
 
 def update_user_streak(user):
@@ -78,6 +84,29 @@ def check_and_award_badges(user, score):
     total_quizzes = Result.objects.filter(user=user).count()
     if total_quizzes >= 10:
         award_badge(user, 'attempt_10')
+    # Achievements integration (simple triggers)
+    if total_quizzes == 1:
+        Achievement.objects.get_or_create(
+            user=user,
+            achievement_type='first_quiz',
+            defaults={
+                'title': 'First Quiz Completed',
+                'description': 'Completed the first quiz',
+                'icon': 'rocket',
+                'points': 10
+            }
+        )
+    if score == 100:
+        Achievement.objects.get_or_create(
+            user=user,
+            achievement_type='perfect_score',
+            defaults={
+                'title': 'Perfect Score',
+                'description': 'Achieved a 100% score in a quiz',
+                'icon': 'star',
+                'points': 25
+            }
+        )
 
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
@@ -396,6 +425,145 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 # Analytics API
+class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AchievementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Achievement.objects.filter(user=self.request.user)
+
+class UserAnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserAnalyticsSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAnalytics.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def recalculate(self, request):
+        user = request.user
+        results = Result.objects.filter(user=user)
+        total_quizzes = results.count()
+        total_questions_answered = results.aggregate(total=Sum('correct_count') + Sum('wrong_count'))['total'] if total_quizzes else 0
+        avg_score = results.aggregate(avg=Avg('score'))['avg'] or 0
+
+        # Category stats
+        category_stats = {}
+        cat_rows = results.values('quiz__category').annotate(
+            quizzes=Count('id'),
+            avg_score=Avg('score'),
+            best_score=Max('score')
+        )
+        for row in cat_rows:
+            category_stats[row['quiz__category']] = {
+                'quizzes': row['quizzes'],
+                'avg_score': round(row['avg_score'] or 0, 2),
+                'best_score': round(row['best_score'] or 0, 2)
+            }
+
+        best_category = None
+        worst_category = None
+        if category_stats:
+            sorted_cats = sorted(category_stats.items(), key=lambda x: x[1]['avg_score'])
+            worst_category = sorted_cats[0][0]
+            best_category = sorted_cats[-1][0]
+
+        analytics_obj, _ = UserAnalytics.objects.get_or_create(user=user)
+        analytics_obj.total_quizzes = total_quizzes
+        analytics_obj.total_questions_answered = total_questions_answered or 0
+        analytics_obj.average_score = round(avg_score, 2)
+        analytics_obj.best_category = best_category or ''
+        analytics_obj.worst_category = worst_category or ''
+        analytics_obj.category_stats = category_stats
+        analytics_obj.save()
+        # Recalculate global ranks based on average_score (descending)
+        all_analytics = UserAnalytics.objects.all().order_by('-average_score')
+        for idx, ua in enumerate(all_analytics, start=1):
+            if ua.rank != idx:
+                ua.rank = idx
+                ua.save(update_fields=['rank'])
+        return Response(UserAnalyticsSerializer(analytics_obj).data)
+
+class DailyChallengeViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = DailyChallengeSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        now = timezone.now()
+        return DailyChallenge.objects.filter(start_date__lte=now, end_date__gte=now, is_active=True)
+
+class ChallengeParticipationViewSet(viewsets.ModelViewSet):
+    serializer_class = ChallengeParticipationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ChallengeParticipation.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class QuestionFeedbackViewSet(viewsets.ModelViewSet):
+    serializer_class = QuestionFeedbackSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return QuestionFeedback.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Prevent duplicate feedback gracefully
+        question = serializer.validated_data.get('question')
+        existing = QuestionFeedback.objects.filter(user=self.request.user, question=question).first()
+        if existing:
+            # Update existing instead of raising integrity error
+            for field, value in serializer.validated_data.items():
+                if field not in ['user', 'question']:
+                    setattr(existing, field, value)
+            existing.save()
+            serializer.instance = existing
+        else:
+            serializer.save(user=self.request.user)
+
+class ForumPostViewSet(viewsets.ModelViewSet):
+    serializer_class = ForumPostSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = ForumPost.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        if request.user in post.likes.all():
+            post.likes.remove(request.user)
+            return Response({'liked': False})
+        post.likes.add(request.user)
+        return Response({'liked': True})
+
+    @action(detail=True, methods=['post'])
+    def view(self, request, pk=None):
+        post = self.get_object()
+        post.views += 1
+        post.save(update_fields=['views'])
+        return Response({'views': post.views})
+
+class ForumCommentViewSet(viewsets.ModelViewSet):
+    serializer_class = ForumCommentSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = ForumComment.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        comment = self.get_object()
+        if request.user in comment.likes.all():
+            comment.likes.remove(request.user)
+            return Response({'liked': False})
+        comment.likes.add(request.user)
+        return Response({'liked': True})
+
 @api_view(['GET'])
 def analytics(request):
     if not request.user.is_authenticated:
@@ -450,26 +618,48 @@ def analytics(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def leaderboard(request):
-    """Get top 20 users by total score"""
-    # Calculate total score for each user
-    top_users = User.objects.annotate(
-        total_score=Sum('result__score'),
-        quizzes_taken=Count('result')
-    ).exclude(total_score__isnull=True).order_by('-total_score')[:20]
-    
-    leaderboard_data = []
-    for rank, user in enumerate(top_users, 1):
-        profile = UserProfile.objects.filter(user=user).first()
-        leaderboard_data.append({
+    """Multi-mode leaderboard: global, category, timeframe"""
+    category = request.query_params.get('category')  # e.g., GK
+    period = request.query_params.get('period')  # daily, weekly, monthly
+
+    results = Result.objects.all()
+    if category:
+        results = results.filter(quiz__category=category)
+
+    now = timezone.now()
+    if period == 'daily':
+        results = results.filter(date_taken__date=now.date())
+    elif period == 'weekly':
+        week_ago = now - timedelta(days=7)
+        results = results.filter(date_taken__gte=week_ago)
+    elif period == 'monthly':
+        month_ago = now - timedelta(days=30)
+        results = results.filter(date_taken__gte=month_ago)
+
+    # Aggregate per user
+    aggregated = results.values('user').annotate(
+        total_score=Sum('score'),
+        quizzes_taken=Count('id'),
+        average_score=Avg('score')
+    ).order_by('-total_score')[:50]
+
+    # Map user objects for efficiency
+    user_map = {u.id: u for u in User.objects.filter(id__in=[a['user'] for a in aggregated])}
+    data = []
+    for rank, row in enumerate(aggregated, 1):
+        user_obj = user_map[row['user']]
+        profile = UserProfile.objects.filter(user=user_obj).first()
+        data.append({
             'rank': rank,
-            'username': user.username,
-            'total_score': round(user.total_score, 2),
-            'quizzes_taken': user.quizzes_taken,
+            'username': user_obj.username,
+            'total_score': round(row['total_score'] or 0, 2),
+            'quizzes_taken': row['quizzes_taken'],
+            'average_score': round(row['average_score'] or 0, 2),
             'profile_picture': profile.profile_picture if profile else None,
-            'is_current_user': user == request.user
+            'is_current_user': user_obj == request.user
         })
-        
-    return Response(leaderboard_data)
+    serializer = LeaderboardEntrySerializer(data, many=True)
+    return Response(serializer.data)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

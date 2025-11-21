@@ -5,7 +5,9 @@ from quizzes.views import (
     QuizViewSet, QuestionViewSet, ResultViewSet, register, login,
     StudyMaterialViewSet, NotificationViewSet, UserProfileViewSet, analytics,
     SubjectViewSet, BadgeViewSet, StreakViewSet, BookmarkViewSet, QuestionReportViewSet,
-    leaderboard, google_login
+    leaderboard, google_login, AchievementViewSet, UserAnalyticsViewSet,
+    DailyChallengeViewSet, ChallengeParticipationViewSet, QuestionFeedbackViewSet,
+    ForumPostViewSet, ForumCommentViewSet
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -24,6 +26,13 @@ router.register(r'badges', BadgeViewSet, basename='badge')
 router.register(r'streak', StreakViewSet, basename='streak')
 router.register(r'bookmarks', BookmarkViewSet, basename='bookmark')
 router.register(r'reports', QuestionReportViewSet, basename='report')
+router.register(r'achievements', AchievementViewSet, basename='achievement')
+router.register(r'analytics/user', UserAnalyticsViewSet, basename='useranalytics')
+router.register(r'challenges', DailyChallengeViewSet, basename='challenge')
+router.register(r'challenge-participation', ChallengeParticipationViewSet, basename='challengeparticipation')
+router.register(r'feedback', QuestionFeedbackViewSet, basename='questionfeedback')
+router.register(r'forum/posts', ForumPostViewSet, basename='forumpost')
+router.register(r'forum/comments', ForumCommentViewSet, basename='forumcomment')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

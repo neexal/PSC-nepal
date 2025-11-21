@@ -314,5 +314,119 @@ class ApiService {
       throw Exception('Failed to load leaderboard');
     }
   }
+
+  // Extended Leaderboard with filters
+  static Future<List<dynamic>> getLeaderboardFiltered({String? category, String? period}) async {
+    final params = <String, String>{};
+    if (category != null && category.isNotEmpty) params['category'] = category;
+    if (period != null && period.isNotEmpty) params['period'] = period;
+    final uri = Uri.parse('$baseUrl/leaderboard/').replace(queryParameters: params.isEmpty ? null : params);
+    final response = await http.get(uri, headers: await getHeaders());
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load filtered leaderboard');
+  }
+
+  // Achievements
+  static Future<List<dynamic>> getAchievements() async {
+    final response = await http.get(Uri.parse('$baseUrl/achievements/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load achievements');
+  }
+
+  // User Analytics
+  static Future<List<dynamic>> getUserAnalytics() async {
+    final response = await http.get(Uri.parse('$baseUrl/analytics/user/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load user analytics');
+  }
+
+  static Future<Map<String, dynamic>> recalcUserAnalytics() async {
+    final response = await http.post(Uri.parse('$baseUrl/analytics/user/recalculate/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to recalculate analytics');
+  }
+
+  // Challenges
+  static Future<List<dynamic>> getActiveChallenges() async {
+    final response = await http.get(Uri.parse('$baseUrl/challenges/'), headers: await getHeaders(includeAuth: false));
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load challenges');
+  }
+
+  static Future<Map<String, dynamic>> participateInChallenge(int challengeId, {int? resultId}) async {
+    final body = {
+      'challenge': challengeId,
+      if (resultId != null) 'result': resultId,
+      'completed': resultId != null,
+    };
+    final response = await http.post(Uri.parse('$baseUrl/challenge-participation/'), headers: await getHeaders(), body: jsonEncode(body));
+    if (response.statusCode == 201) return jsonDecode(response.body);
+    throw Exception('Failed to participate in challenge');
+  }
+
+  // Question Feedback
+  static Future<Map<String, dynamic>> giveQuestionFeedback({required int questionId, int? difficultyRating, bool? isHelpful, String? comment}) async {
+    final body = {
+      'question': questionId,
+      if (difficultyRating != null) 'difficulty_rating': difficultyRating,
+      if (isHelpful != null) 'is_helpful': isHelpful,
+      if (comment != null && comment.isNotEmpty) 'comment': comment,
+    };
+    final response = await http.post(Uri.parse('$baseUrl/feedback/'), headers: await getHeaders(), body: jsonEncode(body));
+    if (response.statusCode == 201) return jsonDecode(response.body);
+    throw Exception('Failed to submit feedback');
+  }
+
+  // Forum Posts
+  static Future<List<dynamic>> getForumPosts() async {
+    final response = await http.get(Uri.parse('$baseUrl/forum/posts/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load forum posts');
+  }
+
+  static Future<Map<String, dynamic>> createForumPost({required String title, required String content, String? postType, int? relatedQuestionId, String? category}) async {
+    final body = {
+      'title': title,
+      'content': content,
+      if (postType != null) 'post_type': postType,
+      if (relatedQuestionId != null) 'related_question': relatedQuestionId,
+      if (category != null) 'category': category,
+    };
+    final response = await http.post(Uri.parse('$baseUrl/forum/posts/'), headers: await getHeaders(), body: jsonEncode(body));
+    if (response.statusCode == 201) return jsonDecode(response.body);
+    throw Exception('Failed to create forum post');
+  }
+
+  static Future<Map<String, dynamic>> likeForumPost(int postId) async {
+    final response = await http.post(Uri.parse('$baseUrl/forum/posts/$postId/like/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to like/unlike post');
+  }
+
+  static Future<List<dynamic>> getForumComments(int postId) async {
+    // Filter comments by post via query param (could be improved server-side later)
+    final response = await http.get(Uri.parse('$baseUrl/forum/comments/?post=$postId'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load comments');
+  }
+
+  static Future<Map<String, dynamic>> createForumComment({required int postId, required String content, int? parentId}) async {
+    final body = {
+      'post': postId,
+      'content': content,
+      if (parentId != null) 'parent_comment': parentId,
+    };
+    final response = await http.post(Uri.parse('$baseUrl/forum/comments/'), headers: await getHeaders(), body: jsonEncode(body));
+    if (response.statusCode == 201) return jsonDecode(response.body);
+    throw Exception('Failed to create comment');
+  }
+
+  static Future<Map<String, dynamic>> likeForumComment(int commentId) async {
+    final response = await http.post(Uri.parse('$baseUrl/forum/comments/$commentId/like/'), headers: await getHeaders());
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to like/unlike comment');
+  }
 }
 

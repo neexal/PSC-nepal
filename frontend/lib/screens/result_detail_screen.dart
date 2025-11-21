@@ -107,7 +107,7 @@ class _ResultDetailScreenState extends State<ResultDetailScreen> {
                 ),
                 SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: issueType,
+                  initialValue: issueType,
                   decoration: InputDecoration(
                     labelText: 'Issue Type',
                     border: OutlineInputBorder(

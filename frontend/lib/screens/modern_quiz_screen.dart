@@ -34,6 +34,112 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
   late Animation<double> _scaleAnimation;
 
   Set<int> bookmarkedQuestions = {};
+  bool feedbackSubmitting = false;
+  Set<int> feedbackSubmittedQuestions = {};
+
+  void _openFeedbackSheet(int questionId) {
+    if (feedbackSubmittedQuestions.contains(questionId)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Feedback already submitted for this question')));
+      return;
+    }
+    final difficultyController = ValueNotifier<int>(3);
+    final helpfulController = ValueNotifier<bool>(true);
+    final commentController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Question Feedback', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Difficulty (1-5)'),
+                    Slider(
+                      value: difficultyController.value.toDouble(),
+                      min: 1,
+                      max: 5,
+                      divisions: 4,
+                      label: difficultyController.value.toString(),
+                      onChanged: (v) => setModalState(() => difficultyController.value = v.toInt()),
+                    ),
+                    Row(
+                      children: [
+                        const Text('Helpful?'),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: helpfulController.value,
+                          onChanged: (val) => setModalState(() => helpfulController.value = val),
+                        ),
+                      ],
+                    ),
+                    TextField(
+                      controller: commentController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Comment (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: feedbackSubmitting ? null : () async {
+                          if (feedbackSubmitting) return;
+                          setState(() { feedbackSubmitting = true; });
+                          try {
+                            await ApiService.giveQuestionFeedback(
+                              questionId: questionId,
+                              difficultyRating: difficultyController.value,
+                              isHelpful: helpfulController.value,
+                              comment: commentController.text.trim().isEmpty ? null : commentController.text.trim(),
+                            );
+                            if (mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Feedback submitted')));
+                              setState(() { feedbackSubmittedQuestions.add(questionId); });
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Submit failed: $e')));
+                            }
+                          } finally {
+                            if (mounted) setState(() { feedbackSubmitting = false; });
+                          }
+                        },
+                        icon: const Icon(Icons.send_rounded),
+                        label: Text(feedbackSubmitting ? 'Submitting...' : 'Submit Feedback'),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -421,6 +527,28 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
                 ),
                 onPressed: () => toggleBookmark(question['id']),
               ),
+              IconButton(
+                tooltip: feedbackSubmittedQuestions.contains(question['id']) ? 'Feedback submitted' : 'Give feedback',
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: feedbackSubmittedQuestions.contains(question['id']) 
+                        ? Colors.green.shade100 
+                        : Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    feedbackSubmittedQuestions.contains(question['id']) 
+                        ? Icons.check_circle_rounded 
+                        : Icons.feedback_rounded,
+                    color: feedbackSubmittedQuestions.contains(question['id']) 
+                        ? Colors.green.shade700 
+                        : Colors.purple.shade400,
+                    size: 20,
+                  ),
+                ),
+                onPressed: feedbackSubmittedQuestions.contains(question['id']) ? null : () => _openFeedbackSheet(question['id']),
+              ),
             ],
           ),
           SizedBox(height: 24),
@@ -454,7 +582,8 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
     return GestureDetector(
       onTap: () => selectAnswer(index),
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 300),
+        duration: Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
         margin: EdgeInsets.only(bottom: 12),
         padding: EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -472,12 +601,19 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Color(0xFF667eea).withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: Offset(0, 5),
+                    color: Color(0xFF667eea).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: Offset(0, 8),
+                    spreadRadius: -2,
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           children: [

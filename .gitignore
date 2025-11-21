@@ -4,10 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
-env/
-ENV/
-.venv
 *.egg-info/
 dist/
 build/
@@ -67,10 +63,26 @@ Pods/
 # IDE
 .idea/
 .vscode/
+.windsurf/
 *.swp
 *.swo
 *~
 .DS_Store
+*.iml
+.metadata
+
+# Analysis and documentation drafts
+analysis.txt
+analysis_final.txt
+*_SETUP.md
+DEBUGGING_*.md
+IMPLEMENTATION_GUIDE.md
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
 
 # Firebase
 google-services.json

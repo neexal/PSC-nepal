@@ -194,3 +194,209 @@ class QuestionReport(models.Model):
 
     def __str__(self):
         return f"Report by {self.user.username} - {self.issue_type}"
+
+class Achievement(models.Model):
+    """Extended achievement system with milestones"""
+    ACHIEVEMENT_TYPES = [
+        ('first_quiz', 'First Quiz Completed'),
+        ('perfect_score', '100% Score'),
+        ('quiz_master', '50 Quizzes Completed'),
+        ('category_expert', 'Category Expert (20+ in one category)'),
+        ('streak_warrior', '30-day Streak'),
+        ('fast_learner', 'Completed 10 quizzes in a week'),
+        ('bookworm', '100 Questions Bookmarked'),
+        ('helpful', '10 Questions Reported'),
+        ('consistent', '100 Quizzes Completed'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='achievements')
+    achievement_type = models.CharField(max_length=50, choices=ACHIEVEMENT_TYPES)
+    category = models.CharField(max_length=20, blank=True, help_text="For category-specific achievements")
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    icon = models.CharField(max_length=50, default='trophy')
+    points = models.IntegerField(default=10, help_text="Points awarded")
+    date_earned = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-date_earned']
+        unique_together = ['user', 'achievement_type', 'category']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+
+class UserAnalytics(models.Model):
+    """Aggregated user performance analytics"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='analytics')
+    total_quizzes = models.IntegerField(default=0)
+    total_questions_answered = models.IntegerField(default=0)
+    average_score = models.FloatField(default=0.0)
+    best_category = models.CharField(max_length=20, blank=True)
+    worst_category = models.CharField(max_length=20, blank=True)
+    total_study_time = models.IntegerField(default=0, help_text="Total time in minutes")
+    points = models.IntegerField(default=0, help_text="Gamification points")
+    rank = models.IntegerField(null=True, blank=True, help_text="Global rank")
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    # Category-wise stats (stored as JSON for flexibility)
+    category_stats = models.JSONField(default=dict, blank=True)
+    # Format: {"GK": {"quizzes": 10, "avg_score": 85.5, "best_score": 95}, ...}
+    
+    def __str__(self):
+        return f"{self.user.username} Analytics"
+
+class QuestionFeedback(models.Model):
+    """User feedback on questions for quality improvement"""
+    DIFFICULTY_RATING = [
+        (1, 'Very Easy'),
+        (2, 'Easy'),
+        (3, 'Medium'),
+        (4, 'Hard'),
+        (5, 'Very Hard'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='question_feedbacks')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='feedbacks')
+    difficulty_rating = models.IntegerField(choices=DIFFICULTY_RATING, null=True, blank=True)
+    is_helpful = models.BooleanField(null=True, blank=True)
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'question']
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Feedback by {self.user.username} on Q-{self.question.id}"
+
+class StudyGroup(models.Model):
+    """Collaborative study groups"""
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    category = models.CharField(max_length=20, blank=True, help_text="Focus category")
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_groups')
+    members = models.ManyToManyField(User, related_name='study_groups', blank=True)
+    is_private = models.BooleanField(default=False)
+    invite_code = models.CharField(max_length=10, unique=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    member_limit = models.IntegerField(default=50)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return self.name
+
+class ForumPost(models.Model):
+    """Discussion forums for questions and topics"""
+    POST_TYPES = [
+        ('question', 'Question'),
+        ('discussion', 'Discussion'),
+        ('tip', 'Study Tip'),
+        ('resource', 'Resource Share'),
+    ]
+    
+    title = models.CharField(max_length=300)
+    content = models.TextField()
+    post_type = models.CharField(max_length=20, choices=POST_TYPES, default='discussion')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_posts')
+    category = models.CharField(max_length=20, blank=True)
+    related_question = models.ForeignKey(Question, on_delete=models.SET_NULL, null=True, blank=True)
+    study_group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, null=True, blank=True, related_name='posts')
+    views = models.IntegerField(default=0)
+    likes = models.ManyToManyField(User, related_name='liked_posts', blank=True)
+    is_pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+    
+    def __str__(self):
+        return self.title
+
+class ForumComment(models.Model):
+    """Comments on forum posts"""
+    post = models.ForeignKey(ForumPost, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_comments')
+    content = models.TextField()
+    parent_comment = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    likes = models.ManyToManyField(User, related_name='liked_comments', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.post.title[:30]}"
+
+class DailyChallenge(models.Model):
+    """Daily/Weekly quiz challenges"""
+    CHALLENGE_TYPES = [
+        ('daily', 'Daily Challenge'),
+        ('weekly', 'Weekly Challenge'),
+        ('monthly', 'Monthly Challenge'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    challenge_type = models.CharField(max_length=10, choices=CHALLENGE_TYPES)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='challenges')
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    reward_points = models.IntegerField(default=50)
+    participants = models.ManyToManyField(User, through='ChallengeParticipation', related_name='challenges')
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-start_date']
+    
+    def __str__(self):
+        return f"{self.title} ({self.challenge_type})"
+
+class ChallengeParticipation(models.Model):
+    """Track user participation in challenges"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_participations')
+    challenge = models.ForeignKey(DailyChallenge, on_delete=models.CASCADE, related_name='participations')
+    result = models.ForeignKey(Result, on_delete=models.CASCADE, null=True, blank=True)
+    completed = models.BooleanField(default=False)
+    rank = models.IntegerField(null=True, blank=True)
+    points_earned = models.IntegerField(default=0)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['user', 'challenge']
+        ordering = ['-completed_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.challenge.title}"
+
+class MockExam(models.Model):
+    """Full-length mock exams for exam simulation"""
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    total_marks = models.IntegerField()
+    duration = models.IntegerField(help_text="Duration in minutes")
+    quizzes = models.ManyToManyField(Quiz, related_name='mock_exams')
+    questions = models.ManyToManyField(Question, related_name='mock_exams', blank=True)
+    passing_score = models.FloatField(default=40.0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.title
+
+class UserPreference(models.Model):
+    """User preferences for personalized experience"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    daily_goal = models.IntegerField(default=3, help_text="Daily quiz goal")
+    reminder_time = models.TimeField(null=True, blank=True)
+    preferred_categories = models.JSONField(default=list, blank=True)
+    difficulty_preference = models.CharField(max_length=10, default='medium')
+    notifications_enabled = models.BooleanField(default=True)
+    email_notifications = models.BooleanField(default=False)
+    theme = models.CharField(max_length=10, default='light', choices=[('light', 'Light'), ('dark', 'Dark')])
+    
+    def __str__(self):
+        return f"{self.user.username} Preferences"

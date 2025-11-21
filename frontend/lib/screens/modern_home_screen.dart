@@ -6,6 +6,10 @@ import 'quiz_list_screen.dart';
 import 'study_materials_screen.dart';
 import 'result_detail_screen.dart';
 import 'leaderboard_screen.dart';
+import 'achievements_screen.dart';
+import 'analytics_screen.dart';
+import 'challenges_screen.dart';
+import 'forum_screen.dart';
 import 'bookmarks_screen.dart';
 
 class ModernHomeScreen extends StatefulWidget {
@@ -21,6 +25,8 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
   bool isLoading = true;
   late AnimationController _progressController;
   late AnimationController _cardController;
+  late AnimationController _actionController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -33,15 +39,26 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
       duration: Duration(milliseconds: 800),
       vsync: this,
     );
+    _actionController = AnimationController(
+      duration: Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _actionController, curve: Curves.easeInOut),
+    );
     fetchData();
     _progressController.forward();
     _cardController.forward();
+    Future.delayed(Duration(milliseconds: 400), () {
+      if (mounted) _actionController.forward();
+    });
   }
 
   @override
   void dispose() {
     _progressController.dispose();
     _cardController.dispose();
+    _actionController.dispose();
     super.dispose();
   }
 
@@ -184,80 +201,110 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
     final totalQuizzes = analytics['total_quizzes'] ?? 0;
     final avgScore = (analytics['average_score'] ?? 0.0).toDouble();
     final badges = (analytics['badges'] is List) ? (analytics['badges'] as List).length : 0;
+    final globalRank = analytics['global_rank'];
     
     return FadeTransition(
       opacity: _cardController,
-      child: Container(
-        padding: EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 30,
-              offset: Offset(0, 10),
-            ),
-          ],
+      child: SlideTransition(
+        position: Tween<Offset>(begin: Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _cardController, curve: Curves.easeOutCubic),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Your Progress',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3748),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 40,
+                offset: Offset(0, 15),
+                spreadRadius: -5,
+              ),
+              BoxShadow(
+                color: Color(0xFF667eea).withOpacity(0.1),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Progress',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D3748),
+                        ),
+                      ),
+                      if (globalRank != null) ...[
+                        SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.leaderboard_rounded, size: 16, color: Color(0xFF667eea)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Global Rank: #$globalRank',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF667eea), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Level ${(avgScore / 20).floor() + 1}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    child: Text(
+                      'Level ${(avgScore / 20).floor() + 1}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildProgressRing(
-                  value: avgScore / 100,
-                  label: 'Avg Score',
-                  valueText: '${avgScore.toInt()}%',
-                  color: Color(0xFF48BB78),
-                ),
-                _buildStatColumn(
-                  icon: Icons.quiz_rounded,
-                  value: totalQuizzes.toString(),
-                  label: 'Quizzes',
-                  color: Color(0xFF4299E1),
-                ),
-                _buildStatColumn(
-                  icon: Icons.emoji_events_rounded,
-                  value: badges.toString(),
-                  label: 'Badges',
-                  color: Color(0xFFED8936),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              SizedBox(height: 24),
+                Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildProgressRing(
+                    value: avgScore / 100,
+                    label: 'Avg Score',
+                    valueText: '${avgScore.toInt()}%',
+                    color: Color(0xFF48BB78),
+                  ),
+                  _buildStatColumn(
+                    icon: Icons.quiz_rounded,
+                    value: totalQuizzes.toString(),
+                    label: 'Quizzes',
+                    color: Color(0xFF4299E1),
+                  ),
+                  _buildStatColumn(
+                    icon: Icons.emoji_events_rounded,
+                    value: badges.toString(),
+                    label: 'Badges',
+                    color: Color(0xFFED8936),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -358,94 +405,85 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
   }
 
   Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                icon: Icons.play_circle_filled_rounded,
-                title: 'Start Quiz',
-                subtitle: 'Test yourself',
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4299E1), Color(0xFF3182CE)],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => QuizListScreen()),
-                  );
-                },
-              ),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
+          ),
+          SizedBox(height: 16),
+          Wrap(
+          spacing: 12,
+            runSpacing: 12,
+            children: [
+              _wrapAction(
+                icon: Icons.play_circle_filled_rounded,
+                title: 'Quiz',
+                subtitle: 'Test yourself',
+                colors: [Color(0xFF4299E1), Color(0xFF3182CE)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => QuizListScreen())),
+              ),
+              _wrapAction(
                 icon: Icons.book_rounded,
                 title: 'Study',
-                subtitle: 'Read materials',
-                gradient: LinearGradient(
-                  colors: [Color(0xFF9F7AEA), Color(0xFF805AD5)],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => StudyMaterialsScreen()),
-                  );
-                },
+                subtitle: 'Materials',
+                colors: [Color(0xFF9F7AEA), Color(0xFF805AD5)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudyMaterialsScreen())),
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
+              _wrapAction(
                 icon: Icons.leaderboard_rounded,
-                title: 'Leaderboard',
-                subtitle: 'Top rankers',
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF6AD55), Color(0xFFED8936)],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => LeaderboardScreen()),
-                  );
-                },
+                title: 'Ranks',
+                subtitle: 'Leaderboard',
+                colors: [Color(0xFFF6AD55), Color(0xFFED8936)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LeaderboardScreen())),
               ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
+              _wrapAction(
+                icon: Icons.emoji_events_rounded,
+                title: 'Awards',
+                subtitle: 'Achievements',
+                colors: [Color(0xFFED64A6), Color(0xFFD53F8C)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AchievementsScreen())),
+              ),
+              _wrapAction(
+                icon: Icons.analytics_rounded,
+                title: 'Stats',
+                subtitle: 'Analytics',
+                colors: [Color(0xFF48BB78), Color(0xFF38A169)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnalyticsScreen())),
+              ),
+              _wrapAction(
+                icon: Icons.flag_rounded,
+                title: 'Goals',
+                subtitle: 'Challenges',
+                colors: [Color(0xFF63B3ED), Color(0xFF3182CE)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChallengesScreen())),
+              ),
+              _wrapAction(
+                icon: Icons.forum_rounded,
+                title: 'Forum',
+                subtitle: 'Discuss',
+                colors: [Color(0xFFB7791F), Color(0xFF975A16)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForumScreen())),
+              ),
+              _wrapAction(
                 icon: Icons.bookmark_rounded,
-                title: 'Bookmarks',
-                subtitle: 'Saved questions',
-                gradient: LinearGradient(
-                  colors: [Color(0xFF68D391), Color(0xFF48BB78)],
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => BookmarksScreen()),
-                  );
-                },
+                title: 'Saved',
+                subtitle: 'Bookmarks',
+                colors: [Color(0xFF68D391), Color(0xFF48BB78)],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BookmarksScreen())),
               ),
-            ),
-          ],
+            ],
         ),
       ],
+      ),
     );
   }
 
@@ -456,24 +494,29 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
     required Gradient gradient,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 15,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: Offset(0, 10),
+                spreadRadius: -3,
+              ),
+            ],
+          ),
+          child: Container(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Icon(icon, color: Colors.white, size: 32),
             SizedBox(height: 12),
             Text(
@@ -494,6 +537,21 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
             ),
           ],
         ),
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _wrapAction({required IconData icon, required String title, required String subtitle, required List<Color> colors, required VoidCallback onTap}) {
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 20 - 12 * 2) / 2 - 6,
+      child: _buildActionCard(
+        icon: icon,
+        title: title,
+        subtitle: subtitle,
+        gradient: LinearGradient(colors: colors),
+        onTap: onTap,
       ),
     );
   }
@@ -515,7 +573,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
           ),
         ),
         SizedBox(height: 16),
-        ...recentResults.map((result) => _buildActivityCard(result)).toList(),
+        ...recentResults.map((result) => _buildActivityCard(result)),
       ],
     );
   }
@@ -524,34 +582,39 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
     final score = (result['score'] ?? 0.0).toDouble();
     final color = score >= 80 ? Color(0xFF48BB78) : score >= 60 ? Color(0xFFED8936) : Color(0xFFF56565);
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ResultDetailScreen(
-              resultId: result['id'],
-              quizTitle: result['quiz_title'] ?? 'Quiz',
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultDetailScreen(
+                resultId: result['id'],
+                quizTitle: result['quiz_title'] ?? 'Quiz',
+              ),
             ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 15,
+                offset: Offset(0, 5),
+                spreadRadius: -2,
+              ),
+            ],
           ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
+          child: Container(
+            margin: EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
             Container(
               width: 50,
               height: 50,
@@ -603,6 +666,8 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> with TickerProvider
             ),
           ],
         ),
+        ),
+      ),
       ),
     );
   }
