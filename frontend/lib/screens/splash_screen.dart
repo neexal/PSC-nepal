@@ -41,7 +41,8 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animationController.forward();
-    _checkAuth();
+    // Defer auth check until after first frame to avoid notifyListeners during build
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAuth());
   }
 
   @override
@@ -51,19 +52,30 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.loadToken();
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.loadToken();
 
-    await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 2));
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => authProvider.isLoggedIn
-              ? const HomeScreen()
-              : const LoginScreen(),
-        ),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => authProvider.isLoggedIn
+                ? const HomeScreen()
+                : const LoginScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Auth check error: $e');
+      // Navigate to login screen on error
+      if (mounted) {
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
     }
   }
 

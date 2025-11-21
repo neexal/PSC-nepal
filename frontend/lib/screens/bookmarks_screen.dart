@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
 
 class BookmarksScreen extends StatefulWidget {
   const BookmarksScreen({super.key});
@@ -21,18 +19,13 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
   void _loadBookmarks() {
     setState(() {
-      _bookmarksFuture = ApiService.getBookmarks(
-        Provider.of<AuthProvider>(context, listen: false).token!,
-      );
+      _bookmarksFuture = ApiService.getBookmarks();
     });
   }
 
   Future<void> _removeBookmark(int questionId) async {
     try {
-      await ApiService.toggleBookmark(
-        Provider.of<AuthProvider>(context, listen: false).token!,
-        questionId,
-      );
+      await ApiService.toggleBookmark(questionId);
       _loadBookmarks();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

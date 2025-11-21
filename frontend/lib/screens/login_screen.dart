@@ -323,11 +323,13 @@ class _LoginScreenState extends State<LoginScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: Image.asset(
-                          'assets/google_logo.png', // Make sure to add this asset or use an Icon
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) => Icon(Icons.login, color: Colors.red),
-                        ),
+                        icon: (true)
+                            ? Icon(Icons.g_mobiledata, size: 32, color: Colors.redAccent)
+                            : Image.asset(
+                                'assets/google_logo.png',
+                                height: 24,
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.login, color: Colors.red),
+                              ),
                         label: Text(
                           'Sign in with Google',
                           style: TextStyle(

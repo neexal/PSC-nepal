@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_helper.dart';
 
@@ -16,7 +17,10 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   void initState() {
     super.initState();
-    _loadAd();
+    // Only load ads on mobile platforms
+    if (!kIsWeb) {
+      _loadAd();
+    }
   }
 
   void _loadAd() {
@@ -48,7 +52,8 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isAdLoaded || _bannerAd == null) {
+    // Don't show ads on web
+    if (kIsWeb || !_isAdLoaded || _bannerAd == null) {
       return const SizedBox.shrink();
     }
 

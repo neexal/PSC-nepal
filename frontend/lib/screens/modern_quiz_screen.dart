@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 import 'results_screen.dart';
 
 class ModernQuizScreen extends StatefulWidget {
@@ -68,6 +67,7 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
       final token = await ApiService.getToken();
       if (token != null) {
         final bookmarks = await ApiService.getBookmarks(token);
+        if (!mounted) return;
         setState(() {
           bookmarkedQuestions = bookmarks
               .map((b) => b['question'] is int ? b['question'] as int : (b['question']['id'] as int))
@@ -114,11 +114,13 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
   Future<void> fetchQuestions() async {
     try {
       final data = await ApiService.getQuizQuestions(widget.quizId);
+      if (!mounted) return;
       setState(() {
         questions = data;
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -163,6 +165,7 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
   Future<void> submitQuiz() async {
     if (isSubmitting) return;
 
+    if (!mounted) return;
     setState(() => isSubmitting = true);
     _timer?.cancel();
 
@@ -184,6 +187,35 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
         );
       }
     }
+  }
+
+  void startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (remainingSeconds <= 0) {
+        timer.cancel();
+        if (!isSubmitting) {
+          await submitQuiz();
+        }
+      } else {
+        if (!mounted) return;
+        setState(() {
+          remainingSeconds -= 1;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _slideController.dispose();
+    _scaleController.dispose();
+    super.dispose();
   }
 
   @override
@@ -357,40 +389,39 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
                   ),
-                  child: Text(
-                    question['difficulty']?.toString().toUpperCase() ?? 'MEDIUM',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  question['difficulty']?.toString().toUpperCase() ?? 'MEDIUM',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    bookmarkedQuestions.contains(question['id']) 
-                        ? Icons.bookmark_rounded 
-                        : Icons.bookmark_border_rounded,
-                    color: bookmarkedQuestions.contains(question['id']) 
-                        ? Color(0xFF667eea) 
-                        : Color(0xFFCBD5E0),
-                  ),
-                  onPressed: () => toggleBookmark(question['id']),
+              ),
+              IconButton(
+                icon: Icon(
+                  bookmarkedQuestions.contains(question['id']) 
+                      ? Icons.bookmark_rounded 
+                      : Icons.bookmark_border_rounded,
+                  color: bookmarkedQuestions.contains(question['id']) 
+                      ? Color(0xFF667eea) 
+                      : Color(0xFFCBD5E0),
                 ),
-              ],
-            ),
+                onPressed: () => toggleBookmark(question['id']),
+              ),
+            ],
           ),
           SizedBox(height: 24),
           Text(
@@ -491,7 +522,6 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> with TickerProvider
 
   Widget _buildNavigation() {
     final canGoBack = currentQuestion > 0;
-    final canGoNext = currentQuestion < questions.length - 1;
     final isLastQuestion = currentQuestion == questions.length - 1;
     final hasAnsweredCurrent = answers.containsKey(questions[currentQuestion]['id'].toString());
 

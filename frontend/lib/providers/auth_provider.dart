@@ -82,37 +82,32 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> loadToken() async {
+    if (_isLoading) return; // prevent re-entrancy
     _isLoading = true;
-    notifyListeners();
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       _token = prefs.getString('token');
-      
+
       if (_token != null) {
-        // Load cached user data
         final userStr = prefs.getString('user');
         final profileStr = prefs.getString('profile');
-        
         if (userStr != null) {
           _user = jsonDecode(userStr);
         }
         if (profileStr != null) {
           _profile = jsonDecode(profileStr);
         }
-        
-        // Verify token with backend
+
         try {
-          final profileData = await ApiService.getProfile();
+          final profileData = await ApiService.getProfile().timeout(const Duration(seconds: 5));
           _profile = profileData;
           _user = profileData['user'];
           _isLoggedIn = true;
-          
-          // Update cached data
           await prefs.setString('user', jsonEncode(_user));
           await prefs.setString('profile', jsonEncode(_profile));
         } catch (e) {
-          // Token invalid, clear everything
+          print('Token verification failed: $e');
           _token = null;
           _user = null;
           _profile = null;
@@ -123,10 +118,11 @@ class AuthProvider with ChangeNotifier {
         _isLoggedIn = false;
       }
     } catch (e) {
+      print('Load token error: $e');
       _isLoggedIn = false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    
-    _isLoading = false;
-    notifyListeners();
   }
 }

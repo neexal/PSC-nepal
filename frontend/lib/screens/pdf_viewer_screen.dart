@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
@@ -20,14 +22,21 @@ class PdfViewerScreen extends StatefulWidget {
 }
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
-  late WebViewController _controller;
+  WebViewController? _controller; // nullable for web fallback
   bool _isLoading = true;
   bool _hasError = false;
+  late String _viewableUrl;
 
   @override
   void initState() {
     super.initState();
-    _initializeWebView();
+    _viewableUrl = _convertToViewableUrl(widget.pdfUrl);
+    if (!kIsWeb) {
+      _initializeWebView();
+    } else {
+      // On web we don't initialize native WebView; just stop loading indicator
+      _isLoading = false;
+    }
     _trackView();
   }
 
@@ -67,25 +76,27 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   void _initializeWebView() {
-    final viewableUrl = _convertToViewableUrl(widget.pdfUrl);
-    
+    if (kIsWeb) return; // safety guard
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = true;
               _hasError = false;
             });
           },
           onPageFinished: (url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
             });
           },
           onWebResourceError: (error) {
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
               _hasError = true;
@@ -93,7 +104,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(viewableUrl));
+      ..loadRequest(Uri.parse(_viewableUrl));
   }
 
   @override
@@ -108,80 +119,110 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: () {
-              _controller.reload();
+              _controller?.reload();
             },
           ),
         ],
       ),
-      body: Stack(
+      body: kIsWeb ? _buildWebFallback() : _buildMobileWebView(),
+    );
+  }
+
+  Widget _buildMobileWebView() {
+    return Stack(
+      children: [
+        if (_controller != null) WebViewWidget(controller: _controller!),
+        if (_isLoading) _buildLoadingOverlay(),
+        if (_hasError && !_isLoading) _buildErrorOverlay(),
+      ],
+    );
+  }
+
+  Widget _buildWebFallback() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            Container(
-              color: Colors.white,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: AppTheme.primaryBlue,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading PDF...',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (_hasError && !_isLoading)
-            Container(
-              color: Colors.white,
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppTheme.errorRed,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Could not load PDF',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Please check your internet connection',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _initializeWebView();
-                        },
-                        icon: Icon(Icons.refresh),
-                        label: Text('Retry'),
-                      ),
-                    ],
+          Text(
+            'Web PDF Viewer (Fallback)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 12),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.picture_as_pdf_rounded, size: 64, color: AppTheme.primaryBlue),
+                  SizedBox(height: 16),
+                  Text(
+                    'Embedded WebView is not available on Web builds.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppTheme.textSecondary),
                   ),
-                ),
+                  SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(_viewableUrl);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: Icon(Icons.open_in_new),
+                    label: Text('Open PDF in New Tab'),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppTheme.primaryBlue),
+            SizedBox(height: 16),
+            Text('Loading PDF...', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorOverlay() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppTheme.errorRed),
+              SizedBox(height: 16),
+              Text('Could not load PDF', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('Please check your internet connection', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _initializeWebView();
+                  _controller?.reload();
+                },
+                icon: Icon(Icons.refresh),
+                label: Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

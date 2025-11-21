@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'quiz_list_screen.dart';
 import 'study_materials_screen.dart';

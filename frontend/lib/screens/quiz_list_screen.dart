@@ -44,6 +44,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
   Future<void> fetchUserResults() async {
     try {
       final results = await ApiService.getResults();
+      if (!mounted) return;
       setState(() {
         userResults = results;
         _calculateCompletionStatus();
@@ -90,13 +91,16 @@ class _QuizListScreenState extends State<QuizListScreen> {
   }
 
   Future<void> fetchQuizzes({String? category}) async {
-    setState(() {
-      isLoading = true;
-      selectedCategory = category == 'All' ? null : category;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        selectedCategory = category == 'All' ? null : category;
+      });
+    }
 
     try {
       final data = await ApiService.getQuizzes(category: selectedCategory);
+      if (!mounted) return;
       setState(() {
         quizzes = data;
         filteredQuizzes = data;
@@ -104,6 +108,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
       });
       _filterQuizzes();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
@@ -265,7 +270,6 @@ class _QuizListScreenState extends State<QuizListScreen> {
                             final quizId = quiz['id'];
                             final isCompleted = completionStatus.containsKey(quizId);
                             final bestScore = isCompleted ? completionStatus[quizId]!['bestScore'] : 0.0;
-                            final attempts = isCompleted ? completionStatus[quizId]!['attempts'] : 0;
                             
                             return AnimatedCard(
                               onTap: () {

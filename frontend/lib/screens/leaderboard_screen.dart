@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -16,9 +14,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   void initState() {
     super.initState();
-    _leaderboardFuture = ApiService.getLeaderboard(
-      Provider.of<AuthProvider>(context, listen: false).token!,
-    );
+    _leaderboardFuture = ApiService.getLeaderboard();
   }
 
   @override

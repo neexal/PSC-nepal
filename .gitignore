@@ -20,6 +20,8 @@ db.sqlite3
 db.sqlite3-journal
 /media
 /staticfiles
+*.secret
+secrets.json
 
 # Flutter
 .dart_tool/
@@ -36,11 +38,15 @@ db.sqlite3-journal
 *.dSYM
 *.iml
 *.lock
+**/app-release.apk
+**/app-debug.apk
 
 # Android
 *.jks
 *.keystore
 local.properties
+key.properties
+**/android/key.properties
 
 # iOS
 *.mode1v3
